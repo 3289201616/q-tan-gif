@@ -1,0 +1,25 @@
+node_modules/
+dist/
+.toy-bin/
+.toy-data/
+.tmp/
+.npm-cache/
+
+# local agent / IDE data
+.workbuddy/
+
+# packaging / build artifacts
+qtan-toy.zip
+*.zip
+
+# stray temp files dropped at repo root
+8月26日 (1).mp4
+i-need-*.mp3
+109951173908721941.png
+
+# marketing / screenshot assets (not source)
+preview/
+publish/
+
+# toy skill helper copy (installed locally, not part of app)
+.toy-skill/

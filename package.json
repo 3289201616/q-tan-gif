@@ -1,0 +1,22 @@
+{
+  "name": "q-tan-gif-maker",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Q弹动图生成器 — Bilibili Toy",
+  "scripts": {
+    "dev": "vite --host 127.0.0.1",
+    "build": "vite build",
+    "preview": "vite preview --host 127.0.0.1"
+  },
+  "dependencies": {
+    "@fontsource-variable/fredoka": "^5.3.0",
+    "fflate": "^0.8.3",
+    "gifenc": "^1.0.3",
+    "three": "^0.186.1"
+  },
+  "devDependencies": {
+    "playwright-core": "^1.64.1",
+    "vite": "^8.3.4"
+  }
+}
