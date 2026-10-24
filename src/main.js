@@ -16,6 +16,7 @@ import {
 } from './utils.js'
 import { CropTool } from './crop-tool.js'
 import { createDemoPlushCanvas } from './demo-art.js'
+import { cropGifFrames, decodeGifFrames, isGifFile } from './gif-input.js'
 import { QStage } from './scene.js'
 import { loadModelFiles } from './model-loader.js'
 import { exportGif } from './gif-export.js'
@@ -93,10 +94,10 @@ function loadSettings() {
   if (typeof saved.shadow === 'boolean') merged.shadow = saved.shadow
   if (typeof saved.spin === 'boolean') merged.spin = saved.spin
   if (Number.isFinite(Number(saved.spinSpeed))) merged.spinSpeed = Number(saved.spinSpeed)
-  if ([1.2, 1.6, 2, 2.4, 3].includes(Number(saved.loopDuration))) {
+  if ([1.2, 1.6, 2, 2.4, 3, 4, 5, 6, 8, 10].includes(Number(saved.loopDuration))) {
     merged.loopDuration = Number(saved.loopDuration)
   }
-  if ([15, 20, 25].includes(Number(saved.fps))) merged.fps = Number(saved.fps)
+  if ([15, 20, 25, 30, 50].includes(Number(saved.fps))) merged.fps = Number(saved.fps)
   if ([360, 480, 600, 720].includes(Number(saved.size))) merged.size = Number(saved.size)
   if ([128, 256].includes(Number(saved.quality))) merged.quality = Number(saved.quality)
   if (['white', 'transparent'].includes(saved.background)) merged.background = saved.background
@@ -270,6 +271,24 @@ function bindSourceControls() {
     await importImage(lastImageFile, { isRecrop: true })
   })
   $('#replaceModel').addEventListener('click', openModelPicker)
+  $('#modelAnimSelect').addEventListener('change', () => {
+    const index = Number($('#modelAnimSelect').value)
+    if (!Number.isInteger(index)) return
+    stage.playModelAnimation(index)
+    stage.pulse()
+  })
+  $('#modelAnimToggle').addEventListener('click', () => {
+    const button = $('#modelAnimToggle')
+    const nowPlaying = button.classList.contains('is-paused') // 之前暂停 → 现在播放
+    setAnimToggleState(button, nowPlaying)
+    stage.setModelAnimPlaying(nowPlaying)
+  })
+  $('#gifAnimToggle').addEventListener('click', () => {
+    const button = $('#gifAnimToggle')
+    const nowPlaying = button.classList.contains('is-paused')
+    setAnimToggleState(button, nowPlaying)
+    stage.setGifPlaying(nowPlaying)
+  })
 
   $$('.mode-tab').forEach((button) => {
     button.addEventListener('click', () => setMode(button.dataset.mode))
@@ -306,6 +325,15 @@ function bindSourceControls() {
   })
 }
 
+async function bitmapToPngFile(bitmap) {
+  const canvas = document.createElement('canvas')
+  canvas.width = bitmap.width
+  canvas.height = bitmap.height
+  canvas.getContext('2d').drawImage(bitmap, 0, 0)
+  const blob = await new Promise((resolve) => canvas.toBlob(resolve, 'image/png'))
+  return new File([blob], 'gif-first-frame.png', { type: 'image/png' })
+}
+
 async function importImage(file, { isRecrop = false } = {}) {
   if (exporting) return
   const error = validateImageFile(file)
@@ -314,7 +342,11 @@ async function importImage(file, { isRecrop = false } = {}) {
     return
   }
   try {
-    const canvas = await cropper.open(file, {
+    // GIF 先整段解码；环境不支持 ImageDecoder 时返回 null，退回静态首帧。
+    const gif = isGifFile(file) ? await decodeGifFrames(file) : null
+    // 裁剪界面用首帧的静态 PNG，避免 <img> 自己播放时截到随机帧。
+    const cropSource = gif ? await bitmapToPngFile(gif.frames[0]) : file
+    const canvas = await cropper.open(cropSource, {
       aspect: 1,
       title: isRecrop ? '重新裁一下图片' : '裁剪你的主角',
       help: isRecrop
@@ -322,20 +354,45 @@ async function importImage(file, { isRecrop = false } = {}) {
         : '拖动图片调整位置 · 滚轮 / 双指缩放 · 建议把主体放在中间',
     })
     if (!canvas) return
-    const trimmed = trimTransparentCanvas(canvas)
+
+    let displayCanvas
+    let animated = null
+    if (gif && cropper.lastCrop) {
+      animated = await cropGifFrames(gif, cropper.lastCrop)
+    }
+
+    if (animated) {
+      displayCanvas = animated.textureCanvas
+      stage.setImageAnimation(animated.frames, animated.starts, animated.duration, displayCanvas)
+    } else {
+      displayCanvas = trimTransparentCanvas(canvas)
+      stage.setImage(displayCanvas)
+    }
+
+    // GIF 动图才显示播放开关；静态图隐藏并重置状态。
+    $('#gifAnimRow').hidden = !animated
+    setAnimToggleState($('#gifAnimToggle'), true)
+    stage.setGifPlaying(true)
+
     lastImageFile = file
-    lastImageCanvas = trimmed
-    stage.setImage(trimmed)
+    lastImageCanvas = displayCanvas
     setMode('image')
     $('#imageDrop').hidden = true
     $('#imageAsset').hidden = false
-    $('#imageThumb').src = makeThumbnail(trimmed)
+    $('#imageThumb').src = makeThumbnail(displayCanvas)
     $('#imageName').textContent = file.name || '我的图片'
-    $('#imageSize').textContent = `${trimmed.width} × ${trimmed.height} · 已裁剪`
+    $('#imageSize').textContent = animated
+      ? `${displayCanvas.width} × ${displayCanvas.height} · ${animated.frames.length} 帧动图`
+      : `${displayCanvas.width} × ${displayCanvas.height} · 已裁剪`
     updateSourceLabels(file.name || '我的图片')
     $('#stageHint').classList.add('is-hidden')
     stage.pulse()
-    toast('图片放好啦，已经 Q 起来', 'success')
+    toast(
+      animated
+        ? `动图接好了，${animated.frames.length} 帧会跟着一起 Q 弹`
+        : '图片放好啦，已经 Q 起来',
+      'success',
+    )
   } catch (error) {
     console.error(error)
     toast(error.message || '图片处理失败', 'error')
@@ -365,7 +422,9 @@ async function importModel(files) {
     $('#modelName').textContent = result.meta.name
     const pieces = [result.meta.format, result.meta.sizeLabel]
     if (result.meta.triangles) pieces.push(`${formatCount(result.meta.triangles)} 面`)
+    if (result.meta.animationCount) pieces.push(`${result.meta.animationCount} 段动作`)
     $('#modelSize').textContent = pieces.join(' · ')
+    setupAnimSelect(result)
     updateSourceLabels(result.meta.name)
     stage.pulse()
     toast(`${result.meta.format} 模型载入成功，开始 Q 弹`, 'success')
@@ -382,6 +441,52 @@ function showStageLoading(show, title, sub) {
   el.hidden = !show
   if (title) $('#stageLoadingTitle').textContent = title
   if (sub) $('#stageLoadingSub').textContent = sub
+}
+
+function setupAnimSelect(result) {
+  const row = $('#modelAnimRow')
+  const select = $('#modelAnimSelect')
+  const selectLabel = $('#modelAnimSelectLabel')
+  const toggle = $('#modelAnimToggle')
+  const animations = result?.animations || []
+
+  if (animations.length) {
+    row.hidden = false
+    setAnimToggleState(toggle, true)
+    stage.setModelAnimPlaying(true)
+    // 多段动作才需要下拉框；单段动作直接自动播第一段，只留播放开关。
+    if (animations.length > 1) {
+      select.innerHTML = ''
+      animations.forEach((clip, index) => {
+        const option = document.createElement('option')
+        option.value = String(index)
+        option.textContent = clip.name || `动作 ${index + 1}`
+        select.appendChild(option)
+      })
+      select.value = '0'
+      select.hidden = false
+      selectLabel.hidden = false
+    } else {
+      select.innerHTML = ''
+      select.hidden = true
+      selectLabel.hidden = true
+    }
+  } else {
+    select.innerHTML = ''
+    row.hidden = true
+  }
+}
+
+function setAnimToggleState(button, playing) {
+  if (!button) return
+  const paused = !playing
+  button.classList.toggle('is-paused', paused)
+  button.setAttribute('aria-pressed', String(playing))
+  const label = button.querySelector('span')
+  if (label) {
+    const base = button.id === 'gifAnimToggle' ? '动图' : '动作'
+    label.textContent = paused ? `播放${base}` : `暂停${base}`
+  }
 }
 
 function setMode(mode, { silentStage = false } = {}) {

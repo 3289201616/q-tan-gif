@@ -36,6 +36,8 @@ export class CropTool {
     this.drag = null
     this.loaded = false
     this.isOpen = false
+    // 最近一次确认时的源图裁剪矩形，GIF 逐帧复用它保持画面一致。
+    this.lastCrop = null
 
     this.boundFramePointerDown = this.onPointerDown.bind(this)
     this.boundPointerMove = this.onPointerMove.bind(this)
@@ -76,6 +78,7 @@ export class CropTool {
     this.pinch = null
     this.drag = null
     this.loaded = false
+    this.lastCrop = null
     this.confirmButton.disabled = true
 
     this.objectUrl = URL.createObjectURL(file)
@@ -332,6 +335,8 @@ export class CropTool {
     const maxOutput = 1600
     const outWidth = Math.max(1, Math.round(Math.min(sw, maxOutput)))
     const outHeight = Math.max(1, Math.round((outWidth * sh) / sw))
+    // 把这次裁剪的来源矩形留下来，GIF 多帧可以套用同一块区域。
+    this.lastCrop = { sx, sy, sw, sh, outWidth, outHeight }
     const canvas = document.createElement('canvas')
     canvas.width = outWidth
     canvas.height = outHeight

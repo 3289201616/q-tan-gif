@@ -131,7 +131,7 @@
                 <strong>导入一张图片</strong>
                 <small>拖进来，或点击选择 · 支持裁剪</small>
               </span>
-              <span class="drop-card__formats">PNG · JPG · WebP</span>
+              <span class="drop-card__formats">PNG · JPG · WebP · GIF</span>
             </div>
             <div class="asset-row" id="imageAsset" hidden>
               <img class="asset-row__thumb" id="imageThumb" alt="" />
@@ -145,6 +145,13 @@
               </button>
               <button class="mini-btn mini-btn--ghost" id="replaceImage" type="button">更换</button>
             </div>
+            <div class="anim-bar" id="gifAnimRow" hidden>
+              <button class="anim-toggle" id="gifAnimToggle" type="button" aria-pressed="true">
+                <svg class="icon icon-pause"><use href="#i-pause" /></svg>
+                <svg class="icon icon-play"><use href="#i-play" /></svg>
+                <span>暂停动图</span>
+              </button>
+            </div>
           </section>
 
           <section class="source-section" id="modelSection" hidden>
@@ -152,7 +159,7 @@
               <input
                 id="modelInput"
                 type="file"
-                accept=".glb,.gltf,.fbx,.obj,.mtl,.stl,.ply,.3mf,.dae,.3ds,.usdz,.zip,.bin,.png,.jpg,.jpeg,.webp,.tga,image/png,image/jpeg"
+                accept=".glb,.gltf,.fbx,.obj,.mtl,.stl,.ply,.3mf,.dae,.3ds,.usdz,.zip,.bin,.png,.jpg,.jpeg,.webp,.tga,.ktx2,.ktx,.dds,.hdr,.exr,.basis,.avif,image/png,image/jpeg,image/webp"
                 multiple
                 hidden
               />
@@ -175,8 +182,20 @@
               </div>
               <button class="mini-btn" id="replaceModel" type="button">更换</button>
             </div>
+            <div class="anim-bar" id="modelAnimRow" hidden>
+              <button class="anim-toggle" id="modelAnimToggle" type="button" aria-pressed="true">
+                <svg class="icon icon-pause"><use href="#i-pause" /></svg>
+                <svg class="icon icon-play"><use href="#i-play" /></svg>
+                <span>暂停动作</span>
+              </button>
+              <label class="anim-select__label" for="modelAnimSelect" id="modelAnimSelectLabel" hidden>
+                <svg class="icon"><use href="#i-layers" /></svg>
+                动作
+              </label>
+              <select class="anim-select__select" id="modelAnimSelect" hidden></select>
+            </div>
             <p class="fineprint">
-              GLTF / OBJ 等需要外部贴图时，请把模型和贴图一起多选；ZIP 会自动解包。模型载入后会立即开始 Q 弹。
+              GLTF / OBJ 等需要外部贴图时，请把模型和贴图一起多选；ZIP 会自动解包。模型载入后会立即开始 Q 弹，带骨骼动画的模型还能在上方选择要播放的动作。
             </p>
           </section>
 
@@ -386,6 +405,8 @@
                   <option value="15">15 fps</option>
                   <option value="20">20 fps</option>
                   <option value="25" selected>25 fps</option>
+                  <option value="30">30 fps</option>
+                  <option value="50">50 fps</option>
                 </select>
               </label>
               <label class="select-row">
@@ -396,6 +417,11 @@
                   <option value="2" selected>2.0 秒</option>
                   <option value="2.4">2.4 秒</option>
                   <option value="3">3.0 秒</option>
+                  <option value="4">4.0 秒</option>
+                  <option value="5">5.0 秒</option>
+                  <option value="6">6.0 秒</option>
+                  <option value="8">8.0 秒</option>
+                  <option value="10">10 秒</option>
                 </select>
               </label>
             </div>

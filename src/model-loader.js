@@ -28,8 +28,11 @@ const cleanPath = (path = '') => {
   try {
     return decodeURIComponent(path)
       .replace(/\\/g, '/')
-      .replace(/^\.\//, '')
+      .replace(/^[a-zA-Z]:/, '')
       .replace(/^\/+/, '')
+      .split('/')
+      .filter((seg) => seg && seg !== '.' && seg !== '..')
+      .join('/')
   } catch {
     return path
   }
@@ -78,6 +81,14 @@ function mimeForName(name) {
   if (['jpg', 'jpeg'].includes(ext)) return 'image/jpeg'
   if (ext === 'webp') return 'image/webp'
   if (ext === 'gif') return 'image/gif'
+  if (ext === 'avif') return 'image/avif'
+  if (ext === 'tga') return 'image/x-tga'
+  if (ext === 'ktx2') return 'image/ktx2'
+  if (ext === 'ktx') return 'image/ktx'
+  if (ext === 'dds') return 'image/vnd-ms.dds'
+  if (ext === 'hdr') return 'image/vnd.radiance'
+  if (ext === 'exr') return 'image/x-exr'
+  if (ext === 'basis') return 'image/basis'
   if (ext === 'bin') return 'application/octet-stream'
   if (ext === 'gltf') return 'model/gltf+json'
   if (ext === 'glb') return 'model/gltf-binary'
@@ -244,18 +255,25 @@ async function loadGltf(file, manager, onProgress) {
       loader.parse(data, '', resolve, reject)
     })
     draco.dispose()
-    return gltf.scene
+    // 动画片段必须跟着场景一起返回，否则模型只会停在绑定姿势。
+    return { scene: gltf.scene, animations: gltf.animations || [] }
   } catch (error) {
     draco.dispose()
     throw error
   }
 }
 
-async function loadFbx(url, manager, onProgress) {
+async function loadFbx(file, manager, onProgress) {
   const { FBXLoader } = await import('three/addons/loaders/FBXLoader.js')
   const loader = new FBXLoader(manager)
   onProgress?.('正在解析 FBX…')
-  return loader.loadAsync(url)
+  const buffer = await file.blob.arrayBuffer()
+  // 用 parse(buffer, '') 而不是 loadAsync(blobUrl)：loadAsync 会把 path 解析成
+  // blob: 前缀的 URL，导致 FBX 里的相对贴图路径也被拼成 blob:，被 URLModifier
+  // 的 blob: 短路直接放行，最终贴图加载失败。显式传空 path，贴图保持相对路径，
+  // 才能命中我们按文件名兜底的 blob 映射。
+  const object = loader.parse(buffer, '')
+  return { scene: object, animations: object.animations || [] }
 }
 
 async function loadObj(files, main, mainUrl, manager, onProgress) {
@@ -352,40 +370,42 @@ export async function loadModelFiles(inputFiles, { onProgress } = {}) {
   const ext = extensionOf(main.name)
   onProgress?.(`正在载入 ${EXTENSION_LABEL[ext] || ext.toUpperCase()}…`, 0.12)
 
-  let object
+  let loaded
   switch (ext) {
     case 'glb':
     case 'gltf':
-      object = await loadGltf(main, manager, onProgress)
+      loaded = await loadGltf(main, manager, onProgress)
       break
     case 'fbx':
-      object = await loadFbx(mainUrl, manager, onProgress)
+      loaded = await loadFbx(main, manager, onProgress)
       break
     case 'obj':
-      object = await loadObj(files, main, mainUrl, manager, onProgress)
+      loaded = { scene: await loadObj(files, main, mainUrl, manager, onProgress), animations: [] }
       break
     case 'stl':
-      object = await loadStl(mainUrl, onProgress)
+      loaded = { scene: await loadStl(mainUrl, onProgress), animations: [] }
       break
     case 'ply':
-      object = await loadPly(mainUrl, onProgress)
+      loaded = { scene: await loadPly(mainUrl, onProgress), animations: [] }
       break
     case '3mf':
-      object = await load3mf(mainUrl, onProgress)
+      loaded = { scene: await load3mf(mainUrl, onProgress), animations: [] }
       break
     case 'dae':
-      object = await loadDae(mainUrl, manager, onProgress)
+      loaded = { scene: await loadDae(mainUrl, manager, onProgress), animations: [] }
       break
     case '3ds':
-      object = await load3ds(mainUrl, manager, onProgress)
+      loaded = { scene: await load3ds(mainUrl, manager, onProgress), animations: [] }
       break
     case 'usdz':
-      object = await loadUsdz(mainUrl, manager, onProgress)
+      loaded = { scene: await loadUsdz(mainUrl, manager, onProgress), animations: [] }
       break
     default:
       throw new Error('暂不支持这个模型格式')
   }
 
+  const object = loaded?.scene
+  const animations = loaded?.animations || []
   if (!object) throw new Error('模型解析结果为空')
   prepareMaterials(object, {
     forceMaterial: ext === 'stl',
@@ -407,6 +427,9 @@ export async function loadModelFiles(inputFiles, { onProgress } = {}) {
   // decoded lazily by the GPU after loadAsync resolves.
   return {
     root: normalized.wrapper,
+    // 动画混合器要挂在原始场景上，轨道里的节点名才能被正确解析。
+    animationRoot: object,
+    animations,
     box: normalized.box,
     size: normalized.size,
     meta: {
@@ -416,6 +439,8 @@ export async function loadModelFiles(inputFiles, { onProgress } = {}) {
       size: files.reduce((sum, entry) => sum + entry.size, 0),
       triangles,
       partCount: countMeshes(object),
+      animationCount: animations.length,
+      animationNames: animations.map((clip) => clip.name || '动画'),
       sizeLabel: formatBytes(files.reduce((sum, entry) => sum + entry.size, 0)),
     },
     revoke() {

@@ -219,6 +219,21 @@ export class QStage {
     this.resizeObserver = null
     this.raf = 0
 
+    // 3D 模型动画
+    this.modelMixer = null
+    this.modelClip = null
+    this.modelAnimations = null
+    this.modelAction = null
+    this.animPlaying = true
+
+    // GIF 动图贴图
+    this.gifFrames = null
+    this.gifStarts = null
+    this.gifDuration = 0
+    this.gifCanvas = null
+    this.gifFrameIndex = -1
+    this.gifPlaying = true
+
     this.options = {
       bounce: 62,
       squash: 68,
@@ -374,9 +389,47 @@ export class QStage {
     this.modelSize = box.getSize(new THREE.Vector3())
     this.configureModelPivot(box)
     this.fitModelCamera()
+
+    // 有动作就默认播放第一段；用户可在侧栏下拉框切换。时间轴由 applyTime 统一驱动，导出同样生效。
+    this.modelAnimations = result.animations?.length ? result.animations : null
+    this.playModelAnimation(0)
+  }
+
+  /**
+   * 切换到指定索引的动作（无动作或索引越界则忽略）。
+   * 只重建一个 mixer 并播放目标 clip，实际时间仍由 updateModelAnimation 的 setTime 驱动。
+   */
+  playModelAnimation(index) {
+    if (!this.modelAnimations?.length || !this.modelResult) return
+    const clip = this.modelAnimations[index]
+    if (!clip) return
+    if (!this.modelMixer) {
+      const root = this.modelResult.animationRoot || this.modelResult.root
+      this.modelMixer = new THREE.AnimationMixer(root)
+    }
+    this.modelMixer.stopAllAction()
+    this.modelClip = clip
+    this.modelAction = this.modelMixer.clipAction(clip)
+    this.modelAction.setLoop(THREE.LoopRepeat, Infinity)
+    this.modelAction.play()
+  }
+
+  setModelAnimPlaying(playing) {
+    this.animPlaying = playing !== false
+  }
+
+  setGifPlaying(playing) {
+    this.gifPlaying = playing !== false
   }
 
   clearModel() {
+    if (this.modelMixer) {
+      this.modelMixer.stopAllAction()
+      this.modelMixer = null
+    }
+    this.modelClip = null
+    this.modelAnimations = null
+    this.modelAction = null
     if (this.modelResult) {
       this.modelContent.remove(this.modelResult.root)
       disposeObject(this.modelResult.root)
@@ -400,7 +453,7 @@ export class QStage {
     return Boolean(this.imageSourceCanvas)
   }
 
-  setImage(canvas) {
+  installImageTexture(canvas) {
     if (!canvas) return
     this.imageSourceCanvas = canvas
     this.imageAspect = canvas.width / canvas.height
@@ -418,6 +471,69 @@ export class QStage {
     this.imageMaterial.uniforms.uTex.value = texture
     this.imageReady = true
     this.fitImagePlane()
+  }
+
+  setImage(canvas) {
+    if (!canvas) return
+    this.clearImageAnimation()
+    this.installImageTexture(canvas)
+  }
+
+  /**
+   * 动图输入：frames 是逐帧画布，starts 是每帧在总时长里的起始秒数，
+   * canvas 是贴图源画布（会被逐帧重绘）。
+   */
+  setImageAnimation(frames, starts, duration, canvas) {
+    if (!frames?.length || !canvas) return
+    this.clearImageAnimation()
+    this.installImageTexture(canvas)
+    this.gifFrames = frames
+    this.gifStarts = starts
+    this.gifDuration = Math.max(0.001, Number(duration) || 0.001)
+    this.gifCanvas = canvas
+    this.gifFrameIndex = -1
+    this.updateImageAnimation(0, this.gifDuration)
+  }
+
+  clearImageAnimation() {
+    if (this.gifFrames) {
+      for (const frame of this.gifFrames) frame?.close?.()
+    }
+    this.gifFrames = null
+    this.gifStarts = null
+    this.gifDuration = 0
+    this.gifCanvas = null
+    this.gifFrameIndex = -1
+  }
+
+  updateImageAnimation(t, duration) {
+    if (!this.gifFrames || !this.gifCanvas || !this.gifStarts?.length) return
+    const span = Math.max(0.001, Number(duration) || 0.001)
+    // 一次循环正好播完一遍动图，首尾自然衔接；暂停时固定第一帧。
+    const loop = this.gifPlaying ? (((t / span) % 1) + 1) % 1 : 0
+    const playhead = loop * this.gifDuration
+    let index = 0
+    for (let i = 0; i < this.gifStarts.length; i += 1) {
+      if (playhead >= this.gifStarts[i]) index = i
+      else break
+    }
+    if (index === this.gifFrameIndex) return
+    this.gifFrameIndex = index
+    const ctx = this.gifCanvas.getContext('2d')
+    const width = this.gifCanvas.width
+    const height = this.gifCanvas.height
+    ctx.clearRect(0, 0, width, height)
+    ctx.drawImage(this.gifFrames[index], 0, 0, width, height)
+    if (this.imageTexture) this.imageTexture.needsUpdate = true
+  }
+
+  updateModelAnimation(t, duration) {
+    if (!this.modelMixer || !this.modelClip) return
+    const span = Math.max(0.001, Number(duration) || 0.001)
+    const clipLength = Math.max(0.001, this.modelClip.duration || 0.001)
+    // 同样让动作在一个循环内正好走完一遍，导出 GIF 首尾才不会跳；暂停时停在绑定姿势。
+    const loop = this.animPlaying ? (((t / span) % 1) + 1) % 1 : 0
+    this.modelMixer.setTime(loop * clipLength)
   }
 
   fitImagePlane() {
@@ -575,6 +691,9 @@ export class QStage {
 
   applyTime(t, impulse = 0) {
     const duration = Math.max(0.2, Number(this.options.loopDuration) || 2)
+    // 动图换帧与模型动作都挂在这条统一时间轴上：预览和逐帧导出走的是同一段逻辑。
+    this.updateImageAnimation(t, duration)
+    this.updateModelAnimation(t, duration)
     const phase = (Math.PI * 2 * this.cycles * t) / duration
     const wave = Math.sin(phase)
     const pulseWave = impulse > 0 ? Math.sin(t * 24) * impulse : 0
@@ -738,6 +857,7 @@ export class QStage {
     this.destroyed = true
     this.stop()
     this.resizeObserver?.disconnect()
+    this.clearImageAnimation()
     this.clearModel()
     this.imageTexture?.dispose()
     this.imageMaterial?.dispose()

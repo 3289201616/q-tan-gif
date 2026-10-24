@@ -979,6 +979,97 @@ body.has-modal {
   color: var(--ink-faint);
 }
 
+.anim-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 10px;
+  padding: 7px 10px;
+  border: 1px solid rgba(84, 56, 45, 0.08);
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.54);
+}
+
+.anim-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  flex: none;
+  height: 30px;
+  padding: 0 10px;
+  border: 1px solid rgba(255, 145, 82, 0.2);
+  border-radius: 10px;
+  background: rgba(255, 232, 237, 0.72);
+  color: var(--pink-deep);
+  font-size: 10.5px;
+  font-weight: 700;
+  font-family: inherit;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: background 0.2s ease, transform 0.2s ease;
+}
+
+.anim-toggle:hover {
+  transform: translateY(-1px);
+  background: rgba(255, 220, 228, 0.95);
+}
+
+.anim-toggle .icon {
+  width: 13px;
+  height: 13px;
+}
+
+.anim-toggle .icon-play {
+  display: none;
+}
+
+.anim-toggle.is-paused .icon-pause {
+  display: none;
+}
+
+.anim-toggle.is-paused .icon-play {
+  display: block;
+}
+
+.anim-select__label {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  flex: none;
+  color: var(--ink-faint);
+  font-size: 10px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.anim-select__label .icon {
+  width: 14px;
+  height: 14px;
+}
+
+.anim-select__select {
+  flex: 1;
+  min-width: 0;
+  height: 30px;
+  padding: 0 8px;
+  border: 1px solid rgba(47, 54, 87, 0.12);
+  border-radius: 9px;
+  background: rgba(255, 255, 255, 0.72);
+  color: var(--ink);
+  font-size: 11px;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+  outline: none;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.anim-select__select:hover,
+.anim-select__select:focus {
+  border-color: rgba(255, 145, 82, 0.45);
+  box-shadow: 0 0 0 3px rgba(255, 145, 82, 0.12);
+}
+
 .fineprint {
   margin: 9px 3px 0;
   color: var(--ink-faint);
