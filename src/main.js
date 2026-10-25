@@ -36,6 +36,12 @@ const DEFAULT_SETTINGS = {
   shadow: true,
   spin: true,
   spinSpeed: 1,
+  exposure: 1.05,
+  lightIntensity: 1,
+  envIntensity: 0.9,
+  imgBrightness: 0,
+  imgContrast: 1,
+  imgSaturation: 1,
   loopDuration: 2,
   fps: 25,
   size: 480,
@@ -94,6 +100,12 @@ function loadSettings() {
   if (typeof saved.shadow === 'boolean') merged.shadow = saved.shadow
   if (typeof saved.spin === 'boolean') merged.spin = saved.spin
   if (Number.isFinite(Number(saved.spinSpeed))) merged.spinSpeed = Number(saved.spinSpeed)
+  if (Number.isFinite(Number(saved.exposure))) merged.exposure = Number(saved.exposure)
+  if (Number.isFinite(Number(saved.lightIntensity))) merged.lightIntensity = Number(saved.lightIntensity)
+  if (Number.isFinite(Number(saved.envIntensity))) merged.envIntensity = Number(saved.envIntensity)
+  if (Number.isFinite(Number(saved.imgBrightness))) merged.imgBrightness = Number(saved.imgBrightness)
+  if (Number.isFinite(Number(saved.imgContrast))) merged.imgContrast = Number(saved.imgContrast)
+  if (Number.isFinite(Number(saved.imgSaturation))) merged.imgSaturation = Number(saved.imgSaturation)
   if ([1.2, 1.6, 2, 2.4, 3, 4, 5, 6, 8, 10].includes(Number(saved.loopDuration))) {
     merged.loopDuration = Number(saved.loopDuration)
   }
@@ -110,6 +122,12 @@ function loadSettings() {
   merged.sway = clamp(merged.sway, 0, 300)
   merged.jelly = clamp(merged.jelly, 0, 300)
   merged.spinSpeed = clamp(Math.round(merged.spinSpeed || 1), 1, 6)
+  merged.exposure = clamp(merged.exposure, 0.5, 1.8)
+  merged.lightIntensity = clamp(merged.lightIntensity, 0.2, 1.6)
+  merged.envIntensity = clamp(merged.envIntensity, 0, 2)
+  merged.imgBrightness = clamp(merged.imgBrightness, -0.5, 0.5)
+  merged.imgContrast = clamp(merged.imgContrast, 0.5, 1.5)
+  merged.imgSaturation = clamp(merged.imgSaturation, 0, 2)
   return merged
 }
 
@@ -524,6 +542,12 @@ function bindSettings() {
     ['#swayRange', '#swayValue', 'sway', (value) => String(value)],
     ['#jellyRange', '#jellyValue', 'jelly', (value) => String(value)],
     ['#spinSpeedRange', '#spinSpeedValue', 'spinSpeed', (value) => `${value} 圈/循环`],
+    ['#exposureRange', '#exposureValue', 'exposure', (value) => Number(value).toFixed(2)],
+    ['#lightRange', '#lightValue', 'lightIntensity', (value) => `${Math.round(Number(value) * 100)}%`],
+    ['#envRange', '#envValue', 'envIntensity', (value) => Number(value).toFixed(2)],
+    ['#imgBrightnessRange', '#imgBrightnessValue', 'imgBrightness', (value) => Number(value).toFixed(2)],
+    ['#imgContrastRange', '#imgContrastValue', 'imgContrast', (value) => Number(value).toFixed(2)],
+    ['#imgSaturationRange', '#imgSaturationValue', 'imgSaturation', (value) => Number(value).toFixed(2)],
   ]
 
   for (const [inputSelector, outputSelector, key, format] of rangeBindings) {
@@ -559,6 +583,12 @@ function bindSettings() {
     settings.shadow = DEFAULT_SETTINGS.shadow
     settings.spin = DEFAULT_SETTINGS.spin
     settings.spinSpeed = DEFAULT_SETTINGS.spinSpeed
+    settings.exposure = DEFAULT_SETTINGS.exposure
+    settings.lightIntensity = DEFAULT_SETTINGS.lightIntensity
+    settings.envIntensity = DEFAULT_SETTINGS.envIntensity
+    settings.imgBrightness = DEFAULT_SETTINGS.imgBrightness
+    settings.imgContrast = DEFAULT_SETTINGS.imgContrast
+    settings.imgSaturation = DEFAULT_SETTINGS.imgSaturation
     applySettingsToUI()
     stage.applyOptions(settings)
     updateLoopMeta()
@@ -1060,6 +1090,18 @@ function applySettingsToUI() {
   $('#jellyValue').textContent = String(settings.jelly)
   $('#spinSpeedRange').value = String(settings.spinSpeed)
   $('#spinSpeedValue').textContent = `${settings.spinSpeed} 圈/循环`
+  $('#exposureRange').value = String(settings.exposure)
+  $('#exposureValue').textContent = Number(settings.exposure).toFixed(2)
+  $('#lightRange').value = String(settings.lightIntensity)
+  $('#lightValue').textContent = `${Math.round(Number(settings.lightIntensity) * 100)}%`
+  $('#envRange').value = String(settings.envIntensity)
+  $('#envValue').textContent = Number(settings.envIntensity).toFixed(2)
+  $('#imgBrightnessRange').value = String(settings.imgBrightness)
+  $('#imgBrightnessValue').textContent = Number(settings.imgBrightness).toFixed(2)
+  $('#imgContrastRange').value = String(settings.imgContrast)
+  $('#imgContrastValue').textContent = Number(settings.imgContrast).toFixed(2)
+  $('#imgSaturationRange').value = String(settings.imgSaturation)
+  $('#imgSaturationValue').textContent = Number(settings.imgSaturation).toFixed(2)
   $('#shadowToggle').checked = settings.shadow
   $('#spinToggle').checked = settings.spin
   $('#sizeSelect').value = String(settings.size)

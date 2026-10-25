@@ -34,6 +34,9 @@ const VERTEX_SHADER = /* glsl */ `
 
 const FRAGMENT_SHADER = /* glsl */ `
   uniform sampler2D uTex;
+  uniform float uBrightness;
+  uniform float uContrast;
+  uniform float uSaturation;
   varying vec2 vUv;
 
   void main() {
@@ -43,6 +46,12 @@ const FRAGMENT_SHADER = /* glsl */ `
     float sheen = (1.0 - smoothstep(0.0, 0.84, distance(vUv, vec2(0.32, 0.2)))) * 0.11;
     float bottom = smoothstep(0.35, 1.0, vUv.y) * 0.045;
     color.rgb = clamp(color.rgb * (1.0 + sheen - bottom), 0.0, 1.0);
+
+    // 亮度 / 对比度 / 饱和度（用户调色，实时 + 导出同步）。
+    color.rgb += uBrightness;
+    color.rgb = (color.rgb - 0.5) * uContrast + 0.5;
+    float luma = dot(color.rgb, vec3(0.2126, 0.7152, 0.0722));
+    color.rgb = mix(vec3(luma), color.rgb, uSaturation);
 
     gl_FragColor = color;
   }
@@ -243,6 +252,12 @@ export class QStage {
       shadow: true,
       spin: false,
       loopDuration: 2,
+      exposure: 1.05,
+      lightIntensity: 1,
+      envIntensity: 0.9,
+      imgBrightness: 0,
+      imgContrast: 1,
+      imgSaturation: 1,
     }
     this.cycles = 2
     this.pixelRatio = Math.min(window.devicePixelRatio || 1, 2)
@@ -259,7 +274,6 @@ export class QStage {
     this.renderer.outputColorSpace = THREE.SRGBColorSpace
     this.renderer.toneMapping = THREE.ACESFilmicToneMapping
     this.renderer.toneMappingExposure = 1.05
-
     this.buildImageScene()
     this.buildModelScene()
     this.bindResize()
@@ -280,6 +294,9 @@ export class QStage {
         uAmp: { value: 0.46 },
         uStretch: { value: 0 },
         uSway: { value: 0.35 },
+        uBrightness: { value: 0 },
+        uContrast: { value: 1 },
+        uSaturation: { value: 1 },
       },
       vertexShader: VERTEX_SHADER,
       fragmentShader: FRAGMENT_SHADER,
@@ -393,6 +410,8 @@ export class QStage {
     // 有动作就默认播放第一段；用户可在侧栏下拉框切换。时间轴由 applyTime 统一驱动，导出同样生效。
     this.modelAnimations = result.animations?.length ? result.animations : null
     this.playModelAnimation(0)
+    // 新载入的模型材质 envMapIntensity 被 prepareMaterials 重置，这里按当前调色设置重刷。
+    this.applyLighting()
   }
 
   /**
@@ -572,9 +591,53 @@ export class QStage {
     this.cycles = Math.max(1, Math.min(14, Math.round(1.8 * Number(this.options.speed || 2))))
     this.imageMaterial.uniforms.uAmp.value = Number(this.options.jelly) / 100
     this.imageMaterial.uniforms.uSway.value = Number(this.options.sway) / 100
+    this.imageMaterial.uniforms.uBrightness.value = Number(this.options.imgBrightness) || 0
+    this.imageMaterial.uniforms.uContrast.value = Number(this.options.imgContrast) ?? 1
+    this.imageMaterial.uniforms.uSaturation.value = Number(this.options.imgSaturation) ?? 1
+    this.applyLighting()
     this.bgCache = null
     if (!this.modelSquash) return
     this.fitModelCamera()
+  }
+
+  /**
+   * 模型渲染调色：曝光、灯光强度、环境反射强度。
+   * 三者都会在预览和逐帧导出（同一个 renderer）里一致生效。
+   */
+  applyLighting() {
+    const exposure = Number(this.options.exposure)
+    const light = Number(this.options.lightIntensity)
+    const env = Number(this.options.envIntensity)
+    if (Number.isFinite(exposure)) {
+      this.renderer.toneMappingExposure = exposure
+    }
+    // 默认主光 3.1 / 补光 1.25 / 轮廓光 1.7 / 半球光 1.5，乘上用户系数统一缩放。
+    if (Number.isFinite(light)) {
+      this.keyLight.intensity = 3.1 * light
+      this.fillLight.intensity = 1.25 * light
+      this.rimLight.intensity = 1.7 * light
+      this.hemi.intensity = 1.5 * light
+    }
+    // 环境反射（PMREM RoomEnvironment）作用在 MeshStandard/Physical 材质上。
+    if (Number.isFinite(env)) {
+      this.modelContent.traverse((child) => {
+        if (!child.isMesh) return
+        const materials = Array.isArray(child.material) ? child.material : [child.material]
+        for (const material of materials) {
+          if (material && 'envMapIntensity' in material) material.envMapIntensity = env
+        }
+      })
+      // 示例团子也一并更新。
+      if (this.demoModel) {
+        this.demoModel.traverse((child) => {
+          if (!child.isMesh) return
+          const materials = Array.isArray(child.material) ? child.material : [child.material]
+          for (const material of materials) {
+            if (material && 'envMapIntensity' in material) material.envMapIntensity = env
+          }
+        })
+      }
+    }
   }
 
   setAspect(aspect) {

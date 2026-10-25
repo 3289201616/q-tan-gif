@@ -1142,6 +1142,26 @@ body.has-modal {
   padding: 0 12px 13px;
 }
 
+.settings-subhead {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 3px;
+  padding-top: 12px;
+  border-top: 1px solid rgba(84, 56, 45, 0.08);
+}
+
+.settings-subhead__title {
+  font-size: 11.5px;
+  font-weight: 700;
+}
+
+.settings-subhead__hint {
+  margin-left: auto;
+  color: var(--ink-faint);
+  font-size: 9px;
+}
+
 .range-row {
   display: flex;
   flex-direction: column;
