@@ -727,18 +727,22 @@ body.has-modal {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 7px;
+  gap: 5px;
   height: 39px;
+  padding: 0 2px;
   border-radius: 11px;
   color: var(--ink-soft);
-  font-size: 12.5px;
+  font-size: 12px;
   font-weight: 700;
+  /* 三个标签挤在一行，别让它换行断字 */
+  white-space: nowrap;
   transition: color 0.25s ease;
 }
 
 .mode-tab .icon {
-  width: 17px;
-  height: 17px;
+  width: 15px;
+  height: 15px;
+  flex: none;
 }
 
 .mode-tab.is-active {
