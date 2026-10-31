@@ -729,7 +729,9 @@ export class QStage {
     if (this.destroyed || this.exporting) return
     const rect = this.frame.getBoundingClientRect()
     if (!rect.width || !rect.height) return
-    const dpr = Math.min(window.devicePixelRatio || 1, 2)
+    // 预览画布按 dpr 放大后每帧都要整块合成，2 倍在高分屏上明显掉帧；
+    // 1.5 倍肉眼几乎看不出差别，像素量却少 44%。导出不受影响。
+    const dpr = Math.min(window.devicePixelRatio || 1, 1.5)
     this.pixelRatio = dpr
     const width = Math.max(2, Math.round(rect.width * dpr))
     const height = Math.max(2, Math.round(rect.height * dpr))

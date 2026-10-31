@@ -1549,12 +1549,20 @@ input[type='range']::-moz-range-thumb {
   height: 100%;
 }
 
-.stage-frame[data-mode='model'] canvas {
+/*
+ * 拖拽旋转的画布必须禁止浏览器接管手势。
+ * 原来只有 model 模式写了 pan-y，触屏上纵向一斜就被判成滚动，
+ * 浏览器发一个 pointercancel 就把拖动掐断——表现就是"每次只能转一点点"。
+ * 玩偶模式当时漏了这条规则，兜底值是 auto，更糟。
+ */
+.stage-frame[data-mode='model'] canvas,
+.stage-frame[data-mode='doll'] canvas {
   cursor: grab;
-  touch-action: pan-y;
+  touch-action: none;
 }
 
-.stage-frame[data-mode='model'].is-rotating canvas {
+.stage-frame[data-mode='model'].is-rotating canvas,
+.stage-frame[data-mode='doll'].is-rotating canvas {
   cursor: grabbing;
 }
 

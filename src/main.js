@@ -199,6 +199,8 @@ function init() {
       hasImage: stage?.hasImage(),
     }),
     resetQuota: () => quota.resetLocal(),
+    // 调试/性能排查用：可以直接摸到舞台
+    stage,
   }
 }
 
@@ -756,10 +758,16 @@ function bindStageControls() {
   stageCanvas.addEventListener('pointerdown', (event) => {
     if (exporting || !['model', 'doll'].includes(settings.mode)) return
     stage.setDragging(true)
+    // 灵敏度按画布宽度算：横扫一整屏正好转一圈。
+    // 固定 0.011 rad/px 在手机上（画布才 390px）扫满也只有 245°，
+    // 桌面宽屏又太快，两头都不合手。
+    const width = stageCanvas.getBoundingClientRect().width || 480
+    const yawPerPx = Math.min(0.032, Math.max(0.008, (Math.PI * 2) / width))
     modelDrag = {
       id: event.pointerId,
       x: event.clientX,
       moved: 0,
+      yawPerPx,
     }
     stageCanvas.setPointerCapture?.(event.pointerId)
     $('#stageFrame').classList.add('is-rotating')
@@ -770,7 +778,7 @@ function bindStageControls() {
     if (!dx) return
     modelDrag.x = event.clientX
     modelDrag.moved += Math.abs(dx)
-    stage.rotateModel(dx * 0.011)
+    stage.rotateModel(dx * modelDrag.yawPerPx)
     $('#stageHint').classList.add('is-hidden')
   })
   const finishStageDrag = (event) => {
@@ -787,6 +795,8 @@ function bindStageControls() {
   }
   stageCanvas.addEventListener('pointerup', finishStageDrag)
   stageCanvas.addEventListener('pointercancel', finishStageDrag)
+  // 指针捕获被系统收回（来电、切后台）时也要收尾，否则下次按下会残留旧状态
+  stageCanvas.addEventListener('lostpointercapture', finishStageDrag)
 
   stageCanvas.addEventListener('click', () => {
     if (exporting) return
