@@ -553,7 +553,9 @@ async function importSkin(file) {
     }`
 
     setMode('doll')
-    $('#stageHint').classList.add('is-hidden')
+    updateStageHint()
+    $('#stageHint').classList.remove('is-hidden')
+    window.setTimeout(() => $('#stageHint').classList.add('is-hidden'), 6000)
     stage.pulse()
     toast(legacy ? '皮肤接好了，左臂左腿已自动补全' : '玩偶做好啦，开始 Q 弹', 'success')
   } catch (error) {
@@ -666,7 +668,9 @@ function updateStageHint() {
     settings.mode === 'model'
       ? '<svg class="icon"><use href="#i-rotate" /></svg> 左右拖动 360° · 点一下 Q 弹'
       : settings.mode === 'doll'
-        ? '<svg class="icon"><use href="#i-doll" /></svg> 拖一张皮肤进来，立刻变成玩偶'
+        ? dollBuilt
+          ? '<svg class="icon"><use href="#i-rotate" /></svg> 左右拖动 360° · 点一下 Q 弹'
+          : '<svg class="icon"><use href="#i-doll" /></svg> 拖一张皮肤进来，立刻变成玩偶'
         : '<svg class="icon"><use href="#i-sparkle" /></svg> 点一下画面，Q 一下'
 }
 
@@ -750,7 +754,8 @@ function bindStageControls() {
 
   const stageCanvas = $('#stageCanvas')
   stageCanvas.addEventListener('pointerdown', (event) => {
-    if (exporting || settings.mode !== 'model') return
+    if (exporting || !['model', 'doll'].includes(settings.mode)) return
+    stage.setDragging(true)
     modelDrag = {
       id: event.pointerId,
       x: event.clientX,
@@ -777,6 +782,7 @@ function bindStageControls() {
       }, 80)
     }
     modelDrag = null
+    stage.setDragging(false)
     $('#stageFrame').classList.remove('is-rotating')
   }
   stageCanvas.addEventListener('pointerup', finishStageDrag)

@@ -101,7 +101,10 @@ body.has-modal {
 }
 
 .panel--source[data-mode='image'] [data-for='model'],
-.panel--source[data-mode='model'] [data-for='image'] {
+.panel--source[data-mode='model'] [data-for='image'],
+.panel--source[data-mode='doll'] [data-for='image'],
+.panel--source[data-mode='image'] [data-for='model3d'],
+.panel--source[data-mode='doll'] [data-for='model3d'] {
   display: none !important;
 }
 
@@ -2219,6 +2222,29 @@ input[type='range']::-moz-range-thumb {
   justify-content: space-between;
   gap: 8px;
   margin-bottom: 11px;
+}
+
+/* 卡片头当 summary 用：去掉默认三角、折叠时不占额外间距 */
+.control-card > summary.control-card__head {
+  margin-bottom: 0;
+  list-style: none;
+  cursor: pointer;
+}
+
+.control-card > summary.control-card__head::-webkit-details-marker {
+  display: none;
+}
+
+.control-card[open] > summary.control-card__head {
+  margin-bottom: 11px;
+}
+
+.control-card__head > span {
+  margin-left: auto;
+}
+
+.control-card[open] .settings-card__chev {
+  transform: rotate(180deg);
 }
 
 .control-card__head h2 {

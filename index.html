@@ -278,6 +278,23 @@
                 <input id="shadowToggle" type="checkbox" checked />
                 <span class="switch-ui" aria-hidden="true"><i></i></span>
               </label>
+              <button class="text-btn" id="resetSettings" type="button">
+                <svg class="icon"><use href="#i-refresh" /></svg>
+                恢复默认手感
+              </button>
+            </div>
+          </details>
+
+          <details class="settings-card" data-for="model">
+            <summary>
+              <span class="settings-card__title">
+                <svg class="icon"><use href="#i-rotate" /></svg>
+                旋转
+              </span>
+              <span class="settings-card__hint">关掉就能停住角度</span>
+              <svg class="icon settings-card__chev"><use href="#i-chevron" /></svg>
+            </summary>
+            <div class="settings-card__body">
               <label class="switch-row" for="spinToggle" data-for="model">
                 <span><strong>360° 旋转</strong><small>可拖动环视；自动转整数圈，首尾正好接上</small></span>
                 <input id="spinToggle" type="checkbox" checked />
@@ -288,10 +305,19 @@
                 <input id="spinSpeedRange" type="range" min="1" max="6" step="1" value="1" />
                 <span class="range-row__ends"><small>慢</small><small>快</small></span>
               </label>
-              <div class="settings-subhead" data-for="model">
-                <span class="settings-subhead__title">渲染调色</span>
-                <span class="settings-subhead__hint">只影响 3D 模型</span>
-              </div>
+            </div>
+          </details>
+
+          <details class="settings-card" data-for="model3d">
+            <summary>
+              <span class="settings-card__title">
+                <svg class="icon"><use href="#i-sparkle" /></svg>
+                渲染调色
+              </span>
+              <span class="settings-card__hint">只影响 3D 模型</span>
+              <svg class="icon settings-card__chev"><use href="#i-chevron" /></svg>
+            </summary>
+            <div class="settings-card__body">
               <label class="range-row" for="exposureRange" data-for="model">
                 <span class="range-row__head"><span>曝光</span><output id="exposureValue">1.05</output></span>
                 <input id="exposureRange" type="range" min="0.5" max="1.8" step="0.05" value="1.05" />
@@ -307,10 +333,19 @@
                 <input id="envRange" type="range" min="0" max="2" step="0.05" value="0.9" />
                 <span class="range-row__ends"><small>哑光</small><small>高反</small></span>
               </label>
-              <div class="settings-subhead" data-for="image">
-                <span class="settings-subhead__title">图片调色</span>
-                <span class="settings-subhead__hint">只影响图片</span>
-              </div>
+            </div>
+          </details>
+
+          <details class="settings-card" data-for="image">
+            <summary>
+              <span class="settings-card__title">
+                <svg class="icon"><use href="#i-image" /></svg>
+                图片调色
+              </span>
+              <span class="settings-card__hint">只影响图片</span>
+              <svg class="icon settings-card__chev"><use href="#i-chevron" /></svg>
+            </summary>
+            <div class="settings-card__body">
               <label class="range-row" for="imgBrightnessRange" data-for="image">
                 <span class="range-row__head"><span>亮度</span><output id="imgBrightnessValue">0</output></span>
                 <input id="imgBrightnessRange" type="range" min="-0.5" max="0.5" step="0.02" value="0" />
@@ -326,10 +361,6 @@
                 <input id="imgSaturationRange" type="range" min="0" max="2" step="0.05" value="1" />
                 <span class="range-row__ends"><small>黑白</small><small>鲜艳</small></span>
               </label>
-              <button class="text-btn" id="resetSettings" type="button">
-                <svg class="icon"><use href="#i-refresh" /></svg>
-                恢复默认手感
-              </button>
             </div>
           </details>
         </aside>
@@ -430,11 +461,13 @@
             </div>
           </section>
 
-          <section class="control-card">
-            <div class="control-card__head">
+          <details class="control-card" open>
+            <summary class="control-card__head">
               <h2><svg class="icon"><use href="#i-layers" /></svg> 画面与背景</h2>
               <span>导出同样生效</span>
-            </div>
+              <svg class="icon settings-card__chev"><use href="#i-chevron" /></svg>
+            </summary>
+            <div class="control-card__body">
             <div class="bg-tabs" id="bgTabs" role="group" aria-label="背景类型">
               <button data-bg="white" type="button"><i class="swatch swatch--white"></i>白色</button>
               <button class="is-active" data-bg="transparent" type="button"><i class="swatch swatch--checker"></i>镂空</button>
@@ -450,13 +483,16 @@
               <svg class="icon"><use href="#i-info" /></svg>
               镂空模式会导出透明 GIF，放进深色或彩色页面都不会露白边。
             </div>
-          </section>
+          </div>
+          </details>
 
-          <section class="control-card">
-            <div class="control-card__head">
+          <details class="control-card" open>
+            <summary class="control-card__head">
               <h2><svg class="icon"><use href="#i-export" /></svg> 导出设置</h2>
               <span id="outputMeta">480 × 480</span>
-            </div>
+              <svg class="icon settings-card__chev"><use href="#i-chevron" /></svg>
+            </summary>
+            <div class="control-card__body">
             <div class="select-grid">
               <label class="select-row">
                 <span>输出尺寸<small>长边像素</small></span>
@@ -504,7 +540,8 @@
               <div><span>预计帧数</span><strong id="frameEstimate">40 帧</strong></div>
               <div><span>文件大小</span><strong>看模型复杂度</strong></div>
             </div>
-          </section>
+          </div>
+          </details>
 
           <section class="tip-card">
             <div class="tip-card__head">

@@ -215,6 +215,7 @@ export class QStage {
     this.modelSize = new THREE.Vector3(2.3, 2.3, 2.3)
     this.modelHeight = 2.35
     this.userYaw = 0
+    this.dragging = false
     this.elapsed = 0
     this.impulse = 0
     this.lastTime = performance.now()
@@ -782,7 +783,32 @@ export class QStage {
   rotateModel(delta) {
     if (!Number.isFinite(delta)) return
     this.userYaw += delta
-    if (this.mode !== 'model') this.mode = 'model'
+    if (!['model', 'doll'].includes(this.mode)) this.mode = 'model'
+  }
+
+  /**
+   * 拖动环视期间暂停自动旋转。
+   * 按下时把当前总角度并进 userYaw，松手时再把时间轴上的自转角扣掉，
+   * 这样按压/松手两个瞬间都不会跳一下，松手后自转从当前角度继续。
+   */
+  setDragging(active) {
+    const next = Boolean(active)
+    if (next === this.dragging) return
+    if (next) {
+      this.userYaw = this.modelRig.rotation.y
+      this.dragging = true
+      return
+    }
+    this.dragging = false
+    this.userYaw -= this.spinAngle(this.elapsed)
+  }
+
+  /** 自转角度只由时间决定，导出才能首尾相接。 */
+  spinAngle(t) {
+    if (!this.options.spin) return 0
+    const duration = Math.max(0.2, Number(this.options.loopDuration) || 2)
+    const turns = Math.max(1, Math.min(6, Math.round(Number(this.options.spinSpeed) || 1)))
+    return (t / duration) * Math.PI * 2 * turns
   }
 
   applyTime(t, impulse = 0) {
@@ -824,10 +850,11 @@ export class QStage {
       this.modelSquash.scale.set(1 - stretch * 0.2, 1 + stretch, 1 - stretch * 0.2)
       this.modelRig.rotation.z = Math.sin(phase) * sway * 0.065 + pulseWave * 0.025
       this.modelRig.rotation.x = Math.sin(phase) * sway * 0.012
-      const spinTurns = Math.max(1, Math.min(6, Math.round(Number(this.options.spinSpeed) || 1)))
-      const autoYaw = this.options.spin
-        ? (t / duration) * Math.PI * 2 * spinTurns
-        : Math.sin(phase) * sway * 0.2
+      const autoYaw = this.dragging
+        ? 0
+        : this.options.spin
+          ? this.spinAngle(t)
+          : Math.sin(phase) * sway * 0.2
       this.modelRig.rotation.y = this.userYaw + autoYaw
 
       if (this.contactShadow) {

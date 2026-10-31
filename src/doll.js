@@ -338,6 +338,8 @@ export function buildDoll({ geometry, material, targetSize = 2.35 }) {
   // 完整居中（含 Y 轴）：舞台那边靠 modelSquash 把枢轴挪到脚底，
   // 这里再自己贴地就会让相机取景偏下、头顶被裁。
   root.position.set(-center.x, -center.y, -center.z)
+  // Minecraft 的模型正面朝 -Z，而舞台相机在 +Z 一侧，转 180° 才是脸朝你
+  wrapper.rotation.y = Math.PI
   wrapper.scale.setScalar(targetSize / maxDimension)
   wrapper.updateMatrixWorld(true)
 
