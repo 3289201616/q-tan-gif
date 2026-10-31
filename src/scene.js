@@ -708,7 +708,10 @@ export class QStage {
     const vFov = (this.modelCamera.fov * Math.PI) / 180
     const hFov = 2 * Math.atan(Math.tan(vFov / 2) * Math.max(0.2, this.aspect))
     const fitFov = Math.min(vFov, hFov)
-    const distance = (fitRadius / Math.sin(fitFov / 2)) * 0.82
+    // 0.82 是模型沿用多年的紧凑取景；玩偶是压扁拉伸的，倍率高的时候会顶到边缘，
+    // 所以单独留出约两成余量，保证拉伸到最大那一帧也不贴边。
+    const padding = this.dollModel ? 1.02 : 0.82
+    const distance = (fitRadius / Math.sin(fitFov / 2)) * padding
     this.modelCamera.position.set(0, stretchMax * 0.35 + radius * 0.08, distance)
     this.modelCamera.lookAt(0, stretchMax * 0.35, 0)
     this.modelCamera.near = Math.max(0.01, distance - radius * 4)
