@@ -308,13 +308,13 @@
             </div>
           </details>
 
-          <details class="settings-card" data-for="model3d">
+          <details class="settings-card" data-for="model">
             <summary>
               <span class="settings-card__title">
                 <svg class="icon"><use href="#i-sparkle" /></svg>
                 渲染调色
               </span>
-              <span class="settings-card__hint">只影响 3D 模型</span>
+              <span class="settings-card__hint">曝光对玩偶同样生效</span>
               <svg class="icon settings-card__chev"><use href="#i-chevron" /></svg>
             </summary>
             <div class="settings-card__body">
@@ -323,12 +323,12 @@
                 <input id="exposureRange" type="range" min="0.5" max="1.8" step="0.05" value="1.05" />
                 <span class="range-row__ends"><small>暗</small><small>亮</small></span>
               </label>
-              <label class="range-row" for="lightRange" data-for="model">
+              <label class="range-row" for="lightRange" data-for="model3d">
                 <span class="range-row__head"><span>灯光强度</span><output id="lightValue">100%</output></span>
                 <input id="lightRange" type="range" min="0.2" max="1.6" step="0.05" value="1" />
                 <span class="range-row__ends"><small>弱</small><small>强</small></span>
               </label>
-              <label class="range-row" for="envRange" data-for="model">
+              <label class="range-row" for="envRange" data-for="model3d">
                 <span class="range-row__head"><span>环境反射</span><output id="envValue">0.9</output></span>
                 <input id="envRange" type="range" min="0" max="2" step="0.05" value="0.9" />
                 <span class="range-row__ends"><small>哑光</small><small>高反</small></span>
