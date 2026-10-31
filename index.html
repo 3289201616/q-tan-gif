@@ -117,6 +117,10 @@
               <svg class="icon"><use href="#i-cube" /></svg>
               3D 模型
             </button>
+            <button class="mode-tab" type="button" role="tab" aria-selected="false" data-mode="doll">
+              <svg class="icon"><use href="#i-doll" /></svg>
+              MC 玩偶
+            </button>
             <span class="mode-tabs__glider" aria-hidden="true"></span>
           </div>
 
@@ -196,6 +200,39 @@
             </div>
             <p class="fineprint">
               GLTF / OBJ 等需要外部贴图时，请把模型和贴图一起多选；ZIP 会自动解包。模型载入后会立即开始 Q 弹，带骨骼动画的模型还能在上方选择要播放的动作。
+            </p>
+          </section>
+
+          <section class="source-section" id="dollSection" hidden>
+            <div class="drop-card" id="skinDrop" tabindex="0" role="button" aria-label="导入 MC 皮肤">
+              <input id="skinInput" type="file" accept="image/png,image/jpeg,image/webp" hidden />
+              <span class="drop-card__art" aria-hidden="true">
+                <span class="drop-card__blob"></span>
+                <svg class="icon drop-card__plus"><use href="#i-plus" /></svg>
+              </span>
+              <span class="drop-card__copy">
+                <strong>导入一张皮肤</strong>
+                <small>直接生成坐姿玩偶，立刻开始 Q 弹</small>
+              </span>
+              <span class="drop-card__formats">PNG · 64×64 · 64×32 · HD</span>
+            </div>
+            <div class="asset-row" id="skinAsset" hidden>
+              <img class="asset-row__thumb" id="skinThumb" alt="" />
+              <div class="asset-row__copy">
+                <strong id="skinName">皮肤</strong>
+                <small id="skinMeta">64 × 64</small>
+              </div>
+              <button class="mini-btn mini-btn--ghost" id="replaceSkin" type="button">更换</button>
+            </div>
+            <div class="doll-body">
+              <span class="doll-body__label">体型</span>
+              <div class="doll-body__seg" role="group" aria-label="玩偶体型">
+                <button class="is-active" type="button" data-body="alex">细胳膊</button>
+                <button type="button" data-body="steve">经典</button>
+              </div>
+            </div>
+            <p class="fineprint">
+              Alex 的胳膊 3 像素宽，配细胳膊皮肤才不会裁边。64×32 的老皮肤只画了右半边，会按官方规则自动镜像补出左臂左腿。玩偶用的是左边那组伸缩滑杆，调法和图片、模型完全一样。
             </p>
           </section>
 
@@ -724,6 +761,7 @@
     <svg class="svg-sprite" aria-hidden="true" xmlns="http://www.w3.org/2000/svg">
       <symbol id="i-image" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="5"/><circle cx="8.2" cy="8.5" r="1.5"/><path d="m4 16 4.5-4.4a2 2 0 0 1 2.8 0l2.2 2.2 1.6-1.6a2 2 0 0 1 2.8 0L21 16"/></symbol>
       <symbol id="i-cube" viewBox="0 0 24 24"><path d="m12 2.8 8 4.4v9.6l-8 4.4-8-4.4V7.2l8-4.4Z"/><path d="m4 7.2 8 4.5 8-4.5M12 11.7v9.5"/></symbol>
+      <symbol id="i-doll" viewBox="0 0 24 24"><rect x="8" y="2.6" width="8" height="7" rx="1.3"/><rect x="6.6" y="9.8" width="10.8" height="7.2" rx="1.3"/><path d="M9.6 17v3.4M14.4 17v3.4"/></symbol>
       <symbol id="i-upload" viewBox="0 0 24 24"><path d="M12 16V4m0 0L7.5 8.5M12 4l4.5 4.5"/><path d="M4 15.5v2A2.5 2.5 0 0 0 6.5 20h11a2.5 2.5 0 0 0 2.5-2.5v-2"/></symbol>
       <symbol id="i-download" viewBox="0 0 24 24"><path d="M12 4v12m0 0 4.5-4.5M12 16l-4.5-4.5"/><path d="M4 15.5v2A2.5 2.5 0 0 0 6.5 20h11a2.5 2.5 0 0 0 2.5-2.5v-2"/></symbol>
       <symbol id="i-crop" viewBox="0 0 24 24"><path d="M6 2v14a2 2 0 0 0 2 2h14M2 6h14a2 2 0 0 1 2 2v14"/></symbol>

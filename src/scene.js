@@ -211,6 +211,7 @@ export class QStage {
     this.imageSourceCanvas = null
     this.modelResult = null
     this.demoModel = null
+    this.dollModel = null
     this.modelSize = new THREE.Vector3(2.3, 2.3, 2.3)
     this.modelHeight = 2.35
     this.userYaw = 0
@@ -415,6 +416,30 @@ export class QStage {
   }
 
   /**
+   * 挂上一个 MC 皮肤玩偶。它和 3D 模型走同一套舞台：
+   * 同一个 modelContent / 压缩枢轴 / 接触阴影，所以上下伸缩、摇摆、旋转全都复用。
+   */
+  setDoll(doll) {
+    this.clearModel()
+    // 清掉可能还挂着的示例团子，免得和玩偶叠在一起
+    this.modelContent.clear()
+    if (!doll) {
+      this.fitModelCamera()
+      return
+    }
+    this.dollModel = doll.root
+    this.modelContent.add(doll.root)
+    const box = new THREE.Box3().setFromObject(doll.root)
+    this.modelSize = box.getSize(new THREE.Vector3())
+    this.configureModelPivot(box)
+    this.fitModelCamera()
+  }
+
+  hasDoll() {
+    return Boolean(this.dollModel)
+  }
+
+  /**
    * 切换到指定索引的动作（无动作或索引越界则忽略）。
    * 只重建一个 mixer 并播放目标 clip，实际时间仍由 updateModelAnimation 的 setTime 驱动。
    */
@@ -442,6 +467,13 @@ export class QStage {
   }
 
   clearModel() {
+    if (this.dollModel) {
+      this.modelContent.remove(this.dollModel)
+      this.dollModel.traverse((child) => {
+        if (child.isMesh) child.geometry?.dispose()
+      })
+      this.dollModel = null
+    }
     if (this.modelMixer) {
       this.modelMixer.stopAllAction()
       this.modelMixer = null
@@ -571,7 +603,7 @@ export class QStage {
   }
 
   setMode(mode) {
-    this.mode = mode === 'model' ? 'model' : 'image'
+    this.mode = ['model', 'doll'].includes(mode) ? mode : 'image'
     this.bgCache = null
   }
 
@@ -664,7 +696,8 @@ export class QStage {
   fitModelCamera() {
     if (!this.modelCamera) return
     const box = new THREE.Box3()
-    if (this.modelResult) box.setFromObject(this.modelResult.root)
+    if (this.dollModel) box.setFromObject(this.dollModel)
+    else if (this.modelResult) box.setFromObject(this.modelResult.root)
     else if (this.demoModel) box.setFromObject(this.demoModel)
     if (box.isEmpty()) return
     const sphere = box.getBoundingSphere(new THREE.Sphere())

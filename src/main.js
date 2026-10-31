@@ -9,6 +9,7 @@ import {
   downloadBlob,
   formatBytes,
   getStoredJSON,
+  loadImage,
   nextFrame,
   setStoredJSON,
   trimTransparentCanvas,
@@ -19,6 +20,9 @@ import { createDemoPlushCanvas } from './demo-art.js'
 import { cropGifFrames, decodeGifFrames, isGifFile } from './gif-input.js'
 import { QStage } from './scene.js'
 import { loadModelFiles } from './model-loader.js'
+import alexDollGeo from './geo/alex.json'
+import steveDollGeo from './geo/steve.json'
+import { buildDoll, createSkinTexture, createDollMaterial, upgradeLegacySkin } from './doll.js'
 import { exportGif } from './gif-export.js'
 import { ToyBridge } from './toy-bridge.js'
 import { QuotaStore } from './quota.js'
@@ -27,6 +31,7 @@ import { MusicController } from './music.js'
 const SETTINGS_KEY = 'qtan_settings_v2'
 const DEFAULT_SETTINGS = {
   mode: 'image',
+  dollBody: 'alex',
   aspect: 1,
   bounce: 100,
   squash: 100,
@@ -69,6 +74,10 @@ let currentResult = null
 let lastImageFile = null
 let lastImageCanvas = null
 let currentModel = null
+let dollBuilt = null
+let dollSkinName = ''
+let dollTexture = null
+let dollMaterial = null
 let authorMid = 0
 let followBusy = false
 let cloudBusy = false
@@ -91,7 +100,8 @@ function loadSettings() {
   const saved = getStoredJSON(SETTINGS_KEY, {}) || {}
   const merged = { ...DEFAULT_SETTINGS }
   const ratios = Object.keys(RATIO_LABELS).map(Number)
-  if (['image', 'model'].includes(saved.mode)) merged.mode = saved.mode
+  if (['image', 'model', 'doll'].includes(saved.mode)) merged.mode = saved.mode
+  if (['alex', 'steve'].includes(saved.dollBody)) merged.dollBody = saved.dollBody
   if (ratios.includes(Number(saved.aspect))) merged.aspect = Number(saved.aspect)
   for (const key of ['bounce', 'squash', 'speed', 'sway', 'jelly']) {
     const value = Number(saved[key])
@@ -153,6 +163,10 @@ function init() {
   bindViewport()
   applySettingsToUI()
   applySettingsToStage()
+  if (settings.mode === 'doll') {
+    if (dollMaterial) rebuildDoll()
+    else stage.setDoll(null)
+  }
   layoutStage()
   setTimeout(layoutStage, 60)
   setTimeout(layoutStage, 300)
@@ -308,6 +322,32 @@ function bindSourceControls() {
     stage.setGifPlaying(nowPlaying)
   })
 
+  const skinInput = $('#skinInput')
+  $('#skinDrop').addEventListener('click', () => skinInput.click())
+  $('#skinDrop').addEventListener('keydown', (event) => {
+    if (event.key === 'Enter' || event.key === ' ') {
+      event.preventDefault()
+      skinInput.click()
+    }
+  })
+  $('#replaceSkin').addEventListener('click', () => skinInput.click())
+  skinInput.addEventListener('change', () => {
+    const file = skinInput.files?.[0]
+    skinInput.value = ''
+    if (file) importSkin(file)
+  })
+
+  $$('.doll-body__seg button').forEach((button) => {
+    button.addEventListener('click', () => {
+      settings.dollBody = button.dataset.body === 'steve' ? 'steve' : 'alex'
+      $$('.doll-body__seg button').forEach((item) =>
+        item.classList.toggle('is-active', item === button),
+      )
+      saveSettings()
+      if (dollMaterial) rebuildDoll()
+    })
+  })
+
   $$('.mode-tab').forEach((button) => {
     button.addEventListener('click', () => setMode(button.dataset.mode))
   })
@@ -454,6 +494,89 @@ async function importModel(files) {
   }
 }
 
+function checkSkinSize(width, height) {
+  if (!width || !height) return '图片读不出尺寸'
+  if (width < 64 || height < 32) return `皮肤太小了（${width}×${height}），至少 64×32`
+  if (width % 64 !== 0) return `宽度要是 64 的倍数，现在是 ${width}`
+  if (height !== 32 * (width / 64) && height !== width) {
+    return `尺寸不对（${width}×${height}），要 64×32、64×64 或它们的等比例放大版`
+  }
+  return ''
+}
+
+/** 把皮肤转成坐姿玩偶，直接挂到舞台上开始 Q 弹。 */
+async function importSkin(file) {
+  if (exporting || !file) return
+  const looksImage = /^image\//.test(file.type) || /\.(png|jpe?g|webp)$/i.test(file.name || '')
+  if (!looksImage) {
+    toast('要的是一张 PNG 皮肤图', 'warn')
+    return
+  }
+  if (file.size > 12 * 1024 * 1024) {
+    toast('图片太大了，皮肤图一般不到 1MB', 'warn')
+    return
+  }
+
+  try {
+    const image = await loadImage(file)
+    const width = image.naturalWidth || image.width
+    const height = image.naturalHeight || image.height
+    const sizeError = checkSkinSize(width, height)
+    if (sizeError) {
+      toast(sizeError, 'warn', 4400)
+      return
+    }
+
+    let canvas = document.createElement('canvas')
+    canvas.width = width
+    canvas.height = height
+    const ctx = canvas.getContext('2d')
+    ctx.imageSmoothingEnabled = false
+    ctx.drawImage(image, 0, 0)
+
+    // 64×32 只画了右半边，按官方规则镜像补出左臂左腿
+    const legacy = height < width
+    if (legacy) canvas = upgradeLegacySkin(canvas, width)
+
+    dollTexture?.dispose()
+    dollTexture = createSkinTexture(canvas, stage.renderer)
+    dollMaterial?.dispose()
+    dollMaterial = createDollMaterial(dollTexture, { width: canvas.width, height: canvas.height })
+    dollSkinName = file.name || '皮肤'
+
+    $('#skinDrop').hidden = true
+    $('#skinAsset').hidden = false
+    $('#skinThumb').src = canvas.toDataURL('image/png')
+    $('#skinName').textContent = dollSkinName
+    $('#skinMeta').textContent = `${width} × ${height}${legacy ? ' · 旧版' : ''}${
+      width > 64 ? ' · HD' : ''
+    }`
+
+    setMode('doll')
+    $('#stageHint').classList.add('is-hidden')
+    stage.pulse()
+    toast(legacy ? '皮肤接好了，左臂左腿已自动补全' : '玩偶做好啦，开始 Q 弹', 'success')
+  } catch (error) {
+    console.error(error)
+    toast(error.message || '皮肤读取失败，换一张试试', 'error')
+  }
+}
+
+function rebuildDoll() {
+  if (!dollMaterial) return
+  const geometry = settings.dollBody === 'steve' ? steveDollGeo : alexDollGeo
+  try {
+    dollBuilt = buildDoll({ geometry, material: dollMaterial })
+    stage.setDoll(dollBuilt)
+    if (dollBuilt.stats.hidden > 0) {
+      toast(`有 ${dollBuilt.stats.hidden} 个方块贴图越界，已经自动隐藏`, 'warn', 3800)
+    }
+  } catch (error) {
+    console.error(error)
+    toast(error.message || '玩偶生成失败', 'error')
+  }
+}
+
 function showStageLoading(show, title, sub) {
   const el = $('#stageLoading')
   el.hidden = !show
@@ -508,11 +631,12 @@ function setAnimToggleState(button, playing) {
 }
 
 function setMode(mode, { silentStage = false } = {}) {
-  if (!['image', 'model'].includes(mode)) return
+  if (!['image', 'model', 'doll'].includes(mode)) return
   settings.mode = mode
   saveSettings()
   $('#imageSection').hidden = mode !== 'image'
   $('#modelSection').hidden = mode !== 'model'
+  $('#dollSection').hidden = mode !== 'doll'
   $('.panel--source').dataset.mode = mode
   $('.mode-tabs').dataset.active = mode
   $$('.mode-tab').forEach((button) => {
@@ -520,7 +644,17 @@ function setMode(mode, { silentStage = false } = {}) {
     button.classList.toggle('is-active', active)
     button.setAttribute('aria-selected', String(active))
   })
-  if (!silentStage) stage.setMode(mode)
+  if (!silentStage) {
+    stage.setMode(mode)
+    if (mode === 'doll') {
+      // 切回来时重建一次：切换模式会清掉 modelContent，几何体也一并释放了
+      if (dollMaterial) rebuildDoll()
+      else stage.setDoll(null)
+    } else if (mode === 'model') {
+      if (currentModel) stage.setModel(currentModel)
+      else stage.restoreDemoModel()
+    }
+  }
   updateSourceLabels()
   $('#stageFrame').dataset.mode = mode
   updateStageHint()
@@ -531,7 +665,9 @@ function updateStageHint() {
   hint.innerHTML =
     settings.mode === 'model'
       ? '<svg class="icon"><use href="#i-rotate" /></svg> 左右拖动 360° · 点一下 Q 弹'
-      : '<svg class="icon"><use href="#i-sparkle" /></svg> 点一下画面，Q 一下'
+      : settings.mode === 'doll'
+        ? '<svg class="icon"><use href="#i-doll" /></svg> 拖一张皮肤进来，立刻变成玩偶'
+        : '<svg class="icon"><use href="#i-sparkle" /></svg> 点一下画面，Q 一下'
 }
 
 function bindSettings() {
@@ -1009,7 +1145,10 @@ function bindDragAndDrop() {
       importModel(files)
     } else {
       const file = files.find((item) => isImageFile(item))
-      if (file) importImage(file)
+      if (!file) return
+      // 在玩偶模式下拖图片，是当皮肤用，不该走图片裁剪
+      if (settings.mode === 'doll') importSkin(file)
+      else importImage(file)
     }
   })
 }
@@ -1137,6 +1276,7 @@ function updateSourceLabels(name) {
   if (!label) {
     if (settings.mode === 'image' && lastImageFile) label = lastImageFile.name
     else if (settings.mode === 'model' && currentModel) label = currentModel.meta.name
+    else if (settings.mode === 'doll') label = dollSkinName || '等一张皮肤'
     else label = settings.mode === 'model' ? '3D 示例团子' : '示例团子'
   }
   $('#sourceBadge').textContent = label
