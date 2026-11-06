@@ -12,18 +12,23 @@
 
 import * as THREE from 'three'
 
+/**
+ * north 是画着脸的那一面，在 +Z 而不是 -Z。
+ * 用 skinview3d 对过：同一张皮肤它在 +Z 侧看到脸，且右腿贴图落在观众左手边。
+ * 之前摆在 -Z，等于让模型沿 Z 翻了一面，脸是正的但左右手脚镜像反了。
+ */
 const faceCorners = {
   north: (a) => [
-    [a.x1, a.y1, a.z0],
-    [a.x0, a.y1, a.z0],
-    [a.x0, a.y0, a.z0],
-    [a.x1, a.y0, a.z0],
-  ],
-  south: (a) => [
     [a.x0, a.y1, a.z1],
     [a.x1, a.y1, a.z1],
     [a.x1, a.y0, a.z1],
     [a.x0, a.y0, a.z1],
+  ],
+  south: (a) => [
+    [a.x1, a.y1, a.z0],
+    [a.x0, a.y1, a.z0],
+    [a.x0, a.y0, a.z0],
+    [a.x1, a.y0, a.z0],
   ],
   east: (a) => [
     [a.x1, a.y1, a.z1],
@@ -53,8 +58,8 @@ const faceCorners = {
 
 const FACE_ORDER = ['north', 'south', 'east', 'west', 'up', 'down']
 const FACE_NORMALS = {
-  north: [0, 0, -1],
-  south: [0, 0, 1],
+  north: [0, 0, 1],
+  south: [0, 0, -1],
   east: [1, 0, 0],
   west: [-1, 0, 0],
   up: [0, 1, 0],
@@ -338,8 +343,7 @@ export function buildDoll({ geometry, material, targetSize = 2.35 }) {
   // 完整居中（含 Y 轴）：舞台那边靠 modelSquash 把枢轴挪到脚底，
   // 这里再自己贴地就会让相机取景偏下、头顶被裁。
   root.position.set(-center.x, -center.y, -center.z)
-  // Minecraft 的模型正面朝 -Z，而舞台相机在 +Z 一侧，转 180° 才是脸朝你
-  wrapper.rotation.y = Math.PI
+  // 模型现在正面就朝 +Z，和舞台相机同侧，不用再转半圈
   wrapper.scale.setScalar(targetSize / maxDimension)
   wrapper.updateMatrixWorld(true)
 
