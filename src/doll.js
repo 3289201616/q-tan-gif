@@ -249,8 +249,40 @@ export function createDollMaterial(texture, skinSize) {
  * 构建玩偶。返回的 root 会把模型缩放到 Q弹 舞台的通用尺寸（最大边 2.35），
  * 底部贴地、水平居中，这样已有的压缩拉伸逻辑能直接套上去。
  */
+/**
+ * 左右肢贴图对调。
+ *
+ * 这套几何是按「正面朝 -Z」搭的，而舞台为了让脸对着观众，会把整只玩偶绕 Y 转 180°。
+ * 转完之后正面还是正面，但左右手性反了：右臂/右腿的贴图跑到了角色的左边，
+ * 看起来就是「左右腿反了」。头和身体是前后对称的，转了不受影响；
+ * 四肢是独立的贴图块，这里把左右的 UV 成对换回来即可。
+ */
+const LIMB_PAIRS = [
+  ['LeftArm', 'RightArm'],
+  ['LeftLeg', 'RightLeg'],
+]
+
+function swapLimbUv(parsed) {
+  const bones = new Map(parsed.bones.map((bone) => [bone.name, bone]))
+  for (const [leftName, rightName] of LIMB_PAIRS) {
+    const left = bones.get(leftName)
+    const right = bones.get(rightName)
+    if (!left?.cubes || !right?.cubes) continue
+    const count = Math.min(left.cubes.length, right.cubes.length)
+    for (let i = 0; i < count; i += 1) {
+      const a = left.cubes[i]
+      const b = right.cubes[i]
+      if (!a.uv || !b.uv) continue
+      const temp = a.uv
+      a.uv = b.uv
+      b.uv = temp
+    }
+  }
+}
+
 export function buildDoll({ geometry, material, targetSize = 2.35 }) {
   const parsed = parseGeometry(geometry)
+  swapLimbUv(parsed)
   const root = new THREE.Group()
   root.name = 'MCDoll'
 

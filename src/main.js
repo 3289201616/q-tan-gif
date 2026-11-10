@@ -41,8 +41,8 @@ const DEFAULT_SETTINGS = {
   shadow: true,
   spin: true,
   spinSpeed: 1,
-  exposure: 1.05,
-  lightIntensity: 1,
+  exposure: 0.9,
+  lightIntensity: 0.7,
   envIntensity: 0.9,
   imgBrightness: 0,
   imgContrast: 1,
@@ -112,6 +112,12 @@ function loadSettings() {
   if (Number.isFinite(Number(saved.spinSpeed))) merged.spinSpeed = Number(saved.spinSpeed)
   if (Number.isFinite(Number(saved.exposure))) merged.exposure = Number(saved.exposure)
   if (Number.isFinite(Number(saved.lightIntensity))) merged.lightIntensity = Number(saved.lightIntensity)
+  // 老默认是曝光 1.05 + 灯光 1.0，3D 模型容易一片死白。只有还停在老默认值的用户才
+  // 一次性压到 0.9 / 0.7，自己调过的保持原样。
+  if (!saved.lightTuned && Number(saved.exposure) === 1.05 && Number(saved.lightIntensity) === 1) {
+    merged.exposure = 0.9
+    merged.lightIntensity = 0.7
+  }
   if (Number.isFinite(Number(saved.envIntensity))) merged.envIntensity = Number(saved.envIntensity)
   if (Number.isFinite(Number(saved.imgBrightness))) merged.imgBrightness = Number(saved.imgBrightness)
   if (Number.isFinite(Number(saved.imgContrast))) merged.imgContrast = Number(saved.imgContrast)
@@ -142,7 +148,8 @@ function loadSettings() {
 }
 
 const saveSettings = debounce(() => {
-  setStoredJSON(SETTINGS_KEY, settings)
+  // lightTuned 只用来标记「已迁移过灯光默认值」，不需要用户自己维护
+  setStoredJSON(SETTINGS_KEY, { ...settings, lightTuned: true })
 }, 220)
 
 function init() {

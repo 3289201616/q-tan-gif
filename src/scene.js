@@ -2,6 +2,9 @@ import * as THREE from 'three'
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js'
 import { disposeObject } from './model-loader.js'
 
+// 玩偶材质跳过了色调映射，曝光对它按「相对默认档」的系数生效，默认档 = 皮肤原色
+const DOLL_BASE_EXPOSURE = 0.9
+
 const VERTEX_SHADER = /* glsl */ `
   uniform float uPhase;
   uniform float uAmp;
@@ -254,8 +257,8 @@ export class QStage {
       shadow: true,
       spin: false,
       loopDuration: 2,
-      exposure: 1.05,
-      lightIntensity: 1,
+      exposure: 0.9,
+      lightIntensity: 0.7,
       envIntensity: 0.9,
       imgBrightness: 0,
       imgContrast: 1,
@@ -650,7 +653,8 @@ export class QStage {
         const materials = Array.isArray(child.material) ? child.material : [child.material]
         for (const material of materials) {
           if (material?.name === 'mc_doll_skin' && material.color) {
-            material.color.setScalar(exposure)
+            // 按默认曝光归一：默认档下玩偶就是皮肤原色，滑杆偏离多少就亮/暗多少
+            material.color.setScalar(exposure / DOLL_BASE_EXPOSURE)
           }
         }
       })
