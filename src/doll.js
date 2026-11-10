@@ -235,6 +235,10 @@ export function createDollMaterial(texture, skinSize) {
     alphaTest: 0.5,
     transparent: false,
     side: THREE.FrontSide,
+    // 玩偶是无光照材质，皮肤上的明暗已经烘在顶点色里了。
+    // 渲染器整体开着 ACES + 1.05 曝光，再套一层会把贴图整体提亮、颜色发白（过曝感），
+    // 所以这里跳过色调映射，让皮肤按原图的颜色显示。
+    toneMapped: false,
   })
   material.name = 'mc_doll_skin'
   material.userData.skinSize = skinSize

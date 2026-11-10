@@ -643,6 +643,17 @@ export class QStage {
     const env = Number(this.options.envIntensity)
     if (Number.isFinite(exposure)) {
       this.renderer.toneMappingExposure = exposure
+      // 玩偶材质跳过了色调映射，曝光对它不起作用；这里用颜色乘子补上，
+      // 让「曝光」滑杆在玩偶模式下依然是那个意思（1.0 左右 ≈ 原色）。
+      this.modelContent.traverse((child) => {
+        if (!child.isMesh) return
+        const materials = Array.isArray(child.material) ? child.material : [child.material]
+        for (const material of materials) {
+          if (material?.name === 'mc_doll_skin' && material.color) {
+            material.color.setScalar(exposure)
+          }
+        }
+      })
     }
     // 默认主光 3.1 / 补光 1.25 / 轮廓光 1.7 / 半球光 1.5，乘上用户系数统一缩放。
     if (Number.isFinite(light)) {
