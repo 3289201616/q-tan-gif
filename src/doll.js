@@ -262,6 +262,39 @@ const LIMB_PAIRS = [
   ['LeftLeg', 'RightLeg'],
 ]
 
+/**
+ * 拷一份 bones 出来再改。
+ *
+ * geometry 一般是模块级 import 的 JSON，parseGeometry 只是把里面那份 bones 原样返回，
+ * 所以 parsed.bones 上的 cube 对象是**所有构建共享**的。swapLimbUv 会就地改写 uv，
+ * 如果直接在它上面动手，每重建一次就会在「换过」和「没换」之间来回翻——
+ * 用户切一次体型、或者从 3D 模型模式切回玩偶，左右手脚就反了。
+ */
+function cloneBonesForSwap(parsed) {
+  const cloneFace = (face) => ({
+    ...face,
+    uv: Array.isArray(face.uv) ? [...face.uv] : face.uv,
+    uv_size: Array.isArray(face.uv_size) ? [...face.uv_size] : face.uv_size,
+  })
+  const cloneUv = (uv) => {
+    if (!uv) return uv
+    const out = {}
+    for (const [faceName, face] of Object.entries(uv)) {
+      out[faceName] = face && typeof face === 'object' ? cloneFace(face) : face
+    }
+    return out
+  }
+  return {
+    ...parsed,
+    bones: parsed.bones.map((bone) => ({
+      ...bone,
+      cubes: Array.isArray(bone.cubes)
+        ? bone.cubes.map((cube) => ({ ...cube, uv: cloneUv(cube.uv) }))
+        : bone.cubes,
+    })),
+  }
+}
+
 function swapLimbUv(parsed) {
   const bones = new Map(parsed.bones.map((bone) => [bone.name, bone]))
   for (const [leftName, rightName] of LIMB_PAIRS) {
@@ -281,7 +314,7 @@ function swapLimbUv(parsed) {
 }
 
 export function buildDoll({ geometry, material, targetSize = 2.35 }) {
-  const parsed = parseGeometry(geometry)
+  const parsed = cloneBonesForSwap(parseGeometry(geometry))
   swapLimbUv(parsed)
   const root = new THREE.Group()
   root.name = 'MCDoll'
